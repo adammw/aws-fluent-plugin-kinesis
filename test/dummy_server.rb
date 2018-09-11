@@ -34,8 +34,9 @@ class DummyServer
 
   def initialize(seed: 0, port: nil)
     @random = Random.new(seed)
+    @random_fail_prob = 0.0
     @random_500 = Random.new(seed)
-    @random_error = false
+    @random_500_prob = 0.0
     @requests = []
     @accepted_records = []
     @failed_count = 0
@@ -63,7 +64,8 @@ class DummyServer
   end
 
   def clear
-    @random_error = false
+    @random_fail_prob = 0.0
+    @random_500_prob = 0.0
     @requests = []
     @accepted_records = []
     @failed_count = 0
@@ -127,12 +129,14 @@ class DummyServer
     aggregated_count
   end
 
-  def enable_random_error
-    @random_error = true
+  def enable_random_error(probability = 0.1)
+    @random_error_prob = probability
+    @random_500_prob = probability
   end
 
   def disable_random_error
-    @random_error = false
+    @random_fail_prob = 0.0
+    @random_500_prob = 0.0
   end
 
   private
@@ -200,15 +204,15 @@ class DummyServer
   end
 
   def random_fail
-    return false unless @random_error
+    return false unless @random_fail_prob > 0
     return true if failed_count == 0
-    @random.rand >= 0.9
+    @random.rand >= (1.0 - @random_fail_prob)
   end
 
   def random_error_500
-    return false unless @random_error
+    return false unless @random_500_prob > 0
     return true if error_count == 0
-    @random_500.rand >= 0.9
+    @random_500.rand >= (1.0 - @random_500_prob)
   end
 
   def data_exceeded?(req)

@@ -220,4 +220,42 @@ class KinesisStreamsOutputAggregatedTest < Test::Unit::TestCase
     end
     d.logs.each { |log_record| assert_not_match(/NoMethodError/, log_record) }
   end
+
+  def test_retry_backoff
+    config = <<-CONF
+      log_level debug
+      <buffer>
+        flush_interval 0.1
+        flush_thread_interval 0.01
+        flush_thread_count 15
+      </buffer>
+    CONF
+    # @server.enable_random_error(1.0)
+    @server.instance_variable_set(:@random_fail_prob, 1.0)
+    d = create_driver(default_config + config)
+    count = 100
+    records = count.times.map{|i|{"a"=>1}}
+    t = Thread.new do
+      start = 0
+      loop do
+        logs = d.logs[start..-1]
+        puts logs
+        start += logs.size
+      end
+    end
+    d.run(default_tag: "test") do
+      records.each { |record| d.feed(record); sleep 0.1 }
+    end
+    t.kill
+    # TODO
+
+  end
 end
+
+module ThreadRun
+  def run
+    puts "Thread#run called on #{self}"
+    super
+  end
+end
+Thread.prepend(ThreadRun)
